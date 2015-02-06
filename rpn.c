@@ -17,11 +17,10 @@ void operation(int o1,int o2,char op,Stack operands) {
 
 void insertToken(LinkedList* exprList, int i, int type){
 	Token *newToken;
-	Node** node;
+	Node **node;
 	newToken = malloc(sizeof(Token));
 	newToken->type=type;
-	newToken->start=i;
-	newToken->end=i;
+	newToken->location=i;
 	node = malloc(sizeof(Node*));
 	*node = create_node(newToken);
 	add_to_list(exprList, *node);
@@ -31,55 +30,42 @@ LinkedList createTokensList(char *expression){
 	int i;
 	LinkedList exprList = createList();
 	for(i=0;expression[i];i++){
-		if(isDigit(expression[i])){
-			insertToken(&exprList, i, 1);
-		} 
-		if(expression[i]==32){
-			insertToken(&exprList, i, 0);
-		}
-		if(!isDigit(expression[i]) && expression[i]!=32){
-			insertToken(&exprList, i, 2);
-		}  
+		if(isDigit(expression[i])) insertToken(&exprList, i, 1);
+		if(expression[i]==32) insertToken(&exprList, i, 0);
+		if(!isDigit(expression[i]) && expression[i]!=32) insertToken(&exprList, i, 2);
 	}
 	return exprList;
 }
 
-void* getValues(LinkedList newList, Stack *operators, Stack *operand, char *expression){
-	Node* walker = newList.head;
-	int i, start,tmp=0,j=0;
-	while(walker!=NULL){
-		i =  ((Token*)walker->data)->type;
-		start = (*(Token*)walker->data).start;
-		if(i==1){
-			(((Token*)walker->next->data)->type==1) && (tmp = tmp*10 + expression[start] - '0');
-			(((Token*)walker->next->data)->type!=1) && (tmp = tmp*10 + expression[start] - '0');
-			(((Token*)walker->next->data)->type!=1) && push(*operand, (voidPtr)tmp) && (tmp=0);
-		}
-		if(i==2){
-			push(*operators, (voidPtr)expression[start]);
-		}
-		walker = walker->next;
-		j++;
-	}
-	return 0;
+void calculator(Stack *operand,char expression){
+	char o1,o2;
+	o2 = (int)pop(*operand);
+	o1 = (int)pop(*operand);
+	operation(o1, o2, expression, *operand);
 }
 
-void* doOperation(Stack *operators, Stack *operand, char *expression){
-	char o1,o2,op;
-	int i;
-	for(i=0;i<=(operand->list->count)-1;i++){
-		o2 = (int)pop(*operand);
-		o1 = (int)pop(*operand);
-		op = (char)pop(*operators);
-		operation(o1, o2, op, *operand);
+void pushToStack(LinkedList newList, Stack *operand, char *expression){
+	Node *walker = newList.head;
+	int i, location, tmp=0, type, nextType=0;
+
+	while(walker!=NULL){
+		i =  ((Token*)walker->data)->type;
+		location = (*(Token*)walker->data).location;
+		if(i==1){
+			nextType = ((Token*)walker->next->data)->type;
+			(nextType==1) && (tmp = tmp*10 + expression[location] - '0');
+			(nextType!=1) 
+				&& (tmp = tmp*10 + expression[location] - '0')
+				&& push(*operand, (voidPtr)tmp) && (tmp=0);
+		}
+		if(i==2) calculator(operand, expression[location]);
+		walker = walker->next;
 	}
-	return 0;
 }
 
 int evaluate(char *expression){
-	Stack operators=createStack(), operand=createStack();
+	Stack operand=createStack();
 	LinkedList newList = createTokensList(expression);
-	getValues(newList, &operators, &operand, expression);
-	doOperation(&operators, &operand, expression);
+	pushToStack(newList, &operand, expression);
 	return (int)(*operand.top)->data;
 } 
